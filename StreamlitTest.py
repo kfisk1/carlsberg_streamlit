@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import snowflake.connector as con
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder
@@ -38,7 +38,7 @@ def get_snowflake_connection(i_user: str, key: str):
     except:
         raise
 
-def fetch_data(fetcher):
+def fetch_start_data(fetcher):
     with ThreadPoolExecutor() as executor:
         future_total_count = executor.submit(fetcher.get_total_event_started)
         future_session_dur = executor.submit(fetcher.get_generic_session_durations)
@@ -49,7 +49,21 @@ def fetch_data(fetcher):
             future_session_dur.result(),
             future_event_count.result()
         )
-    
+
+def run_funcs_async(*functions, arg=None):
+    results = [None] * len(functions)
+    with ThreadPoolExecutor() as executor:
+        future_to_index = {executor.submit(func, arg): i for i, func in enumerate(functions)}
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                results[index] = future.result()
+            except Exception as e:
+                results[index] = e
+
+        return results
+
+
 def validate_input_string(input: str):
     pattern = "^[a-zA-Z]+$"
     return re.match(pattern, input) is not None
@@ -86,7 +100,7 @@ def main():
 
             with st.spinner("Fetching data... (First time may take several minutes)"):
                 st.session_state.isActive = True
-                df_total_count, df_session_dur, df_event_count_by_device = fetch_data(st.session_state.fetcher)
+                df_total_count, df_session_dur, df_event_count_by_device = fetch_start_data(st.session_state.fetcher)
 
             with col_l:
                 with st.container(key="col_container", border=True):
@@ -191,8 +205,8 @@ def main():
                             print("session row found")
                             row = df_event_count_by_device.iloc[[st.session_state.selected_row]]
                             event_data = {
-                                'EVENT_NAME': list(df_event_count_by_device.columns[1:]),
-                                'EVENT_COUNT': [row.get(col) for col in df_event_count_by_device.columns[1:]]
+                                'EVENT_NAME': list(df_event_count_by_device.columns[1:-1]),
+                                'EVENT_COUNT': [row.get(col) for col in df_event_count_by_device.columns[1:-1]]
                             }
                             event_df = pd.DataFrame(event_data)
                             event_df["EVENT_COUNT"] = event_df["EVENT_COUNT"].astype(int)
@@ -212,8 +226,38 @@ def main():
                             )
                             
                             st.plotly_chart(fig)
+
+                            if (st.button("Fetch more")):
+                                with st.spinner("Fetching device data... May take several minutes first time"):
+                                    st.write("Latest event recordings by device")
+                                    token = str(row.iloc[0]["DEVICE_TOKEN"])
+                                    results = run_funcs_async(
+                                        st.session_state.fetcher.get_latest_event_timestamps_by_devicetoken,
+                                        st.session_state.fetcher.get_session_durations_by_devicetoken,
+                                        arg=token
+                                        )
+
+                                device_timestamp_df = results[0]
+                                device_session_dur_df = results[1]
+                                st.write(device_timestamp_df)
                         
-                    
+                                df_device_daily_avg = (
+                                    device_session_dur_df.groupby('SESSION_DATE')['SESSION_DURATION']
+                                    .mean()
+                                    .reset_index()
+                                    .rename(columns={'SESSION_DURATION': 'AVG_SESSION_DURATION'})
+                                )
+
+                                fig_avg_daily = px.line(
+                                df_device_daily_avg,
+                                x='SESSION_DATE',
+                                y='AVG_SESSION_DURATION',
+                                title='Average Session Duration Per Day By Device (Last Month)',
+                                labels={'SESSION_DATE': 'Date', 'AVG_SESSION_DURATION': 'Average Duration (minutes)'},
+                                markers=True
+                                )
+                                fig_avg_daily.update_layout(template='plotly_white')
+                                st.plotly_chart(fig_avg_daily)
 
 if __name__ == "__main__":
     main()

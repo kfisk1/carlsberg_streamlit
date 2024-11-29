@@ -106,9 +106,10 @@ class Data_fetcher:
     def get_event_count_by_device_token(_self):
         
         device_event_count_query = f'''
-            SELECT
+            SELECT DISTINCT
                 event_name,
                 EVENT_JSON:deviceName::STRING AS device_name,
+                EVENT_JSON:deviceToken::STRING AS device_token,
                 COUNT(*) AS event_count
             FROM
                 account_events
@@ -118,25 +119,40 @@ class Data_fetcher:
                 environment_name = '{_self.env}'
             AND
                 event_name in ('gameStarted','experienceStarted','perfectServingStarted','breweryIngredientsStarted','artOfBrewingStarted')
+            
+            AND  (
+                EVENT_JSON:deviceToken::STRING IS NOT NULL 
+                OR (
+                    EVENT_JSON:deviceToken::STRING IS NULL 
+                    AND EVENT_JSON:deviceName::STRING IS NULL
+                )
+            )
             GROUP BY
                 event_name,
-                EVENT_JSON:deviceName::STRING
+                EVENT_JSON:deviceName::STRING,
+                EVENT_JSON:deviceToken::STRING
             ORDER BY
                 event_name, event_count DESC;
             '''
 
         try:
             res = _self.fetch_data(device_event_count_query)
+
             res["DEVICE_NAME"] = res["DEVICE_NAME"].fillna("None")
+            res["DEVICE_TOKEN"] = res["DEVICE_TOKEN"].fillna("None")
+
+            device_mapping = res.groupby("DEVICE_NAME")["DEVICE_TOKEN"].first().reset_index()
 
             pivot_df = res.pivot_table(
-            index='DEVICE_NAME', 
-            columns='EVENT_NAME', 
-            values='EVENT_COUNT',
-            fill_value=0
+                index="DEVICE_NAME",
+                columns="EVENT_NAME",
+                values="EVENT_COUNT",
+                fill_value=0
             ).reset_index()
 
+            pivot_df = pivot_df.merge(device_mapping, on="DEVICE_NAME", how="left")
             return pivot_df
+
         except:
             raise
             
@@ -158,5 +174,63 @@ class Data_fetcher:
         }
 
         return pd.DataFrame(data)
+    
+    def get_latest_event_timestamps_by_devicetoken(_self, deviceToken: str) -> pd.DataFrame:
 
+        device_token_dates_query = f'''
+        SELECT
+            EVENT_NAME,
+            MAX(event_timestamp) AS latest_event_timestamp
+        FROM
+            account_events
+        WHERE
+            game_name = 'The Experience'
+            AND environment_name = '{_self.env}'
+            AND EVENT_JSON:deviceToken::STRING = '{deviceToken}'
+            AND EVENT_NAME IN ('gameStarted', 'experienceStarted', 'perfectServingStarted', 'breweryIngredientsStarted', 'artOfBrewingStarted')
+        GROUP BY
+            EVENT_NAME
+        ORDER BY
+            latest_event_timestamp DESC;
+        '''
+
+        try:
+            res = _self.fetch_data(device_token_dates_query)
+            return res
+        except:
+            raise
+
+    def get_session_durations_by_devicetoken(_self, deviceToken: str) -> pd.DataFrame:
+        query = f'''
+                WITH session_data AS (
+                SELECT
+                    EVENT_JSON:sessionID::STRING AS session_id,
+                    DATE_TRUNC('day', event_timestamp) AS session_date,
+                    MIN(event_timestamp) AS session_start_time,
+                    MAX(event_timestamp) AS session_end_time
+                FROM
+                    ACCOUNT_EVENTS
+                WHERE
+                    GAME_NAME = 'The Experience'
+                    AND ENVIRONMENT_NAME = '{_self.env}'
+                    AND EVENT_JSON:deviceToken::STRING = '{deviceToken}'
+                    AND EVENT_JSON:sessionID::STRING IS NOT NULL
+                    AND event_timestamp >= DATEADD('month', -1, CURRENT_DATE)
+                GROUP BY
+                    EVENT_JSON:sessionID::STRING, DATE_TRUNC('day', event_timestamp)
+            )
+            SELECT
+                session_date,
+                DATEDIFF('minute', session_start_time, session_end_time) AS session_duration
+            FROM
+                session_data
+            WHERE
+                DATEDIFF('minute', session_start_time, session_end_time) > 0
+            '''
+        
+        try:
+            res = _self.fetch_data(query)
+            return res
+        except:
+            raise
 
