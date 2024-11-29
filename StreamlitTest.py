@@ -258,6 +258,7 @@ def main():
                                 )
                                 fig_avg_daily.update_layout(template='plotly_white')
                                 st.plotly_chart(fig_avg_daily)
+        st.write("Version 0.2")
 
 if __name__ == "__main__":
     main()
