@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import snowflake.connector as con
 import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder
-import plotly.graph_objects as go
 import re
 import data_fetcher
+
 
 st.set_page_config(layout='wide')
 
@@ -15,6 +15,7 @@ plotly_template = "plotly_dark"
 header = st.container(border=True)
 body = st.container(border=False)
 
+# Data to be persistent across restarts
 if "selected_row" not in st.session_state:
     st.session_state.selected_row = None
 
@@ -25,55 +26,12 @@ if "fetcher" not in st.session_state:
     st.session_state.fetcher = None
 
 
-@st.cache_resource
-def get_snowflake_connection(i_user: str, key: str):
-    try:
-        conn = con.connect(
-            account=st.secrets["account"],
-            user=i_user,
-            password=key
-        )
-        return conn 
-    
-    except:
-        raise
-
-def fetch_start_data(fetcher):
-    with ThreadPoolExecutor() as executor:
-        future_total_count = executor.submit(fetcher.get_total_event_started)
-        future_session_dur = executor.submit(fetcher.get_generic_session_durations)
-        future_event_count = executor.submit(fetcher.get_event_count_by_device_token)
-
-        return (
-            future_total_count.result(),
-            future_session_dur.result(),
-            future_event_count.result()
-        )
-
-def run_funcs_async(*functions, arg=None):
-    results = [None] * len(functions)
-    with ThreadPoolExecutor() as executor:
-        future_to_index = {executor.submit(func, arg): i for i, func in enumerate(functions)}
-        for future in as_completed(future_to_index):
-            index = future_to_index[future]
-            try:
-                results[index] = future.result()
-            except Exception as e:
-                results[index] = e
-
-        return results
-
-
-def validate_input_string(input: str):
-    pattern = "^[a-zA-Z]+$"
-    return re.match(pattern, input) is not None
-
 def main():
-
-    with header:
+    
+    with header: # Login input header
         st.title('Virsabi analytics for "The Experience" [Alpha]')
         user = st.text_input("Username: ")
-        key = st.text_input("Key: ", type="password")
+        key = st.text_input("API Key: ", type="password")
         env = st.text_input("Envrironment: ")
 
         if st.button("Fetch Data"):
@@ -92,7 +50,7 @@ def main():
 
              
 
-    with body:
+    with body: # Data visualization fields
 
         col_l, col_r = st.columns(2, gap='medium')
 
@@ -100,12 +58,14 @@ def main():
 
             with st.spinner("Fetching data... (First time may take several minutes)"):
                 st.session_state.isActive = True
-                df_total_count, df_session_dur, df_event_count_by_device = fetch_start_data(st.session_state.fetcher)
+                df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
+                                                                                           st.session_state.fetcher.get_generic_session_durations,
+                                                                                           st.session_state.fetcher.get_event_count_by_device_token)
 
-            with col_l:
+            with col_l: # Left column with total data
                 with st.container(key="col_container", border=True):
                     st.header("Total Metrics")
-                    if df_total_count is not None:
+                    if df_total_count is not None: # Total event count dataframe
                         fig = px.bar(
                             df_total_count, 
                             x='EVENT_NAME', 
@@ -123,7 +83,7 @@ def main():
                         st.plotly_chart(fig)
 
 
-                    if df_session_dur is not None:
+                    if df_session_dur: # Session duration dataframe. used for next 2 charts
 
                         df_daily_avg = (
                             df_session_dur.groupby('SESSION_DATE')['SESSION_DURATION']
@@ -132,7 +92,7 @@ def main():
                             .rename(columns={'SESSION_DURATION': 'AVG_SESSION_DURATION'})
                         )
 
-                        fig_avg_daily = px.line(
+                        fig_avg_daily = px.line( # Average duration line chart
                         df_daily_avg,
                         x='SESSION_DATE',
                         y='AVG_SESSION_DURATION',
@@ -153,7 +113,7 @@ def main():
                             columns=['DURATION_METRIC', 'DURATION_MINUTES']
                         )
 
-                        fig_metrics = px.bar(
+                        fig_metrics = px.bar( # aggregated metrics bar chart
                         df_metrics,
                         x='DURATION_MINUTES',
                         y='DURATION_METRIC',
@@ -175,18 +135,18 @@ def main():
                         st.plotly_chart(fig_metrics)
 
 
-            with col_r:
+            with col_r: # Right column for data by device
                 with st.container(key="col_container2", border=True):
 
                     st.header("Metrics by device")
 
-                    if df_event_count_by_device is not None:
+                    if df_event_count_by_device is not None: # event count by device dataframe
                         st.write("Device Event Table. Select row for visualization")     
                         grid_options = GridOptionsBuilder.from_dataframe(df_event_count_by_device)
                         grid_options.configure_selection('single')  # Single-row selection mode
                         grid_options = grid_options.build()
 
-                        response = AgGrid(
+                        response = AgGrid( # Interactive table
                             df_event_count_by_device,
                             gridOptions=grid_options,
                             height=300,
@@ -201,8 +161,7 @@ def main():
                             st.session_state.selected_row = selected_row.index[0]
                             print(f"session row update: {selected_row.index[0]}")
 
-                        if st.session_state.selected_row is not None:
-                            print("session row found")
+                        if st.session_state.selected_row is not None: # show extra device viz when row is selected
                             row = df_event_count_by_device.iloc[[st.session_state.selected_row]]
                             event_data = {
                                 'EVENT_NAME': list(df_event_count_by_device.columns[1:-1]),
@@ -227,7 +186,7 @@ def main():
                             
                             st.plotly_chart(fig)
 
-                            if (st.button("Fetch more")):
+                            if (st.button("Fetch more")): # fetch extra device data from db when pressed
                                 with st.spinner("Fetching device data... May take several minutes first time"):
                                     st.write("Latest event recordings by device")
                                     token = str(row.iloc[0]["DEVICE_TOKEN"])
@@ -239,7 +198,7 @@ def main():
 
                                 device_timestamp_df = results[0]
                                 device_session_dur_df = results[1]
-                                st.write(device_timestamp_df)
+                                st.write(device_timestamp_df) # show table
                         
                                 df_device_daily_avg = (
                                     device_session_dur_df.groupby('SESSION_DATE')['SESSION_DURATION']
@@ -248,7 +207,7 @@ def main():
                                     .rename(columns={'SESSION_DURATION': 'AVG_SESSION_DURATION'})
                                 )
 
-                                fig_avg_daily = px.line(
+                                fig_avg_daily = px.line( # show line chart
                                 df_device_daily_avg,
                                 x='SESSION_DATE',
                                 y='AVG_SESSION_DURATION',
@@ -258,7 +217,43 @@ def main():
                                 )
                                 fig_avg_daily.update_layout(template='plotly_white')
                                 st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.2")
+        st.write("Version 0.3")
+
+@st.cache_resource
+def get_snowflake_connection(i_user: str, key: str):
+    try:
+        conn = con.connect(
+            account=st.secrets["account"],
+            user=i_user,
+            password=key
+        )
+        return conn 
+    
+    except:
+        raise
+
+def run_funcs_async(*functions, arg=None): # run several queries at once with optional argument
+    results = [None] * len(functions)
+    with ThreadPoolExecutor() as executor:
+
+        if arg is None:
+            future_to_index = {executor.submit(func): i for i, func in enumerate(functions)}
+        else:
+            future_to_index = {executor.submit(func, arg): i for i, func in enumerate(functions)}
+            
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                results[index] = future.result()
+            except Exception as e:
+                results[index] = e
+
+        return results
+
+
+def validate_input_string(input: str): # only english letters allowed in env for SQL sanitation!
+    pattern = "^[a-zA-Z]+$"
+    return re.match(pattern, input) is not None
 
 if __name__ == "__main__":
     main()
