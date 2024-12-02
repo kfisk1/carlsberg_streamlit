@@ -230,7 +230,7 @@ def main():
                                     )
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.3")
+        st.write("Version 0.4")
 
 @st.cache_resource
 def get_snowflake_connection(i_user: str, key: str):
