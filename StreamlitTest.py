@@ -83,7 +83,7 @@ def main():
                         st.plotly_chart(fig)
 
 
-                    if df_session_dur: # Session duration dataframe. used for next 2 charts
+                    if df_session_dur is not None: # Session duration dataframe. used for next 2 charts
 
                         df_daily_avg = (
                             df_session_dur.groupby('SESSION_DATE')['SESSION_DURATION']
