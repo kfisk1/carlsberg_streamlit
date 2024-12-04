@@ -240,7 +240,8 @@ def get_snowflake_connection(i_user: str, key: str):
         conn = con.connect(
             account=st.secrets["account"],
             user=i_user,
-            password=key
+            password=key,
+            client_session_keep_alive=True
         )
         return conn 
     
