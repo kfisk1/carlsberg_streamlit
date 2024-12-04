@@ -70,7 +70,7 @@ def main():
             else:
                 with st.spinner("Fetching data... (First time may take several minutes)"):
                     st.session_state.isActive = True
-
+                    df_total_count, df_session_dur, df_event_count_by_device = None, None, None
                     df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
                                                                                             st.session_state.fetcher.get_generic_session_durations,
                                                                                             st.session_state.fetcher.get_event_count_by_device_token)
