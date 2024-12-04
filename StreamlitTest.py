@@ -70,17 +70,26 @@ def main():
             else:
                 with st.spinner("Fetching data... (First time may take several minutes)"):
                     st.session_state.isActive = True
-                    df_total_count, df_session_dur, df_event_count_by_device = None, None, None
+
                     df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
-                                                                                            st.session_state.fetcher.get_generic_session_durations,
-                                                                                            st.session_state.fetcher.get_event_count_by_device_token)
+                                                                                                st.session_state.fetcher.get_generic_session_durations,
+                                                                                                st.session_state.fetcher.get_event_count_by_device_token)
                     
-                    st.write(df_total_count)
+                    if df_total_count or df_session_dur or df_event_count_by_device is Exception:
+                        print(f"Dataframe exception:: df_total_count: {df_total_count}, df_session_dur: {df_session_dur},  df_event_count_by_device: {df_event_count_by_device}")
+                        st.error("Failed to fetch data. Probably because connection timed out. Enter Credentials again")
+                        st.session_state.fetcher.con.close()
+                        st.cache_resource.clear()
+                        st.session_state.fetcher = None
+                        st.session_state.isActive = False
+                        return
+
+
 
                 with col_l: # Left column with total data
                     with st.container(key="col_container", border=True):
                         st.header("Total Metrics")
-                        if df_total_count is not None and not df_total_count.empty: # Total event count dataframe
+                        if df_total_count is not None and isinstance(df_total_count, pd.DataFrame): # Total event count dataframe
                             fig = px.bar(
                                 df_total_count, 
                                 x='EVENT_NAME', 
@@ -98,7 +107,7 @@ def main():
                             st.plotly_chart(fig)
 
 
-                        if df_session_dur is not None: # Session duration dataframe. used for next 2 charts
+                        if df_session_dur is not None and isinstance(df_session_dur, pd.DataFrame): # Session duration dataframe. used for next 2 charts
 
                             df_daily_avg = (
                                 df_session_dur.groupby('SESSION_DATE')['SESSION_DURATION']
@@ -155,7 +164,7 @@ def main():
 
                         st.header("Metrics by device")
 
-                        if df_event_count_by_device is not None: # event count by device dataframe
+                        if df_event_count_by_device is not None and isinstance(df_event_count_by_device, pd.DataFrame): # event count by device dataframe
                             st.write("Device Event Table. Select row for visualization")     
                             grid_options = GridOptionsBuilder.from_dataframe(df_event_count_by_device)
                             grid_options.configure_selection('single')  # Single-row selection mode
@@ -240,8 +249,7 @@ def get_snowflake_connection(i_user: str, key: str):
         conn = con.connect(
             account=st.secrets["account"],
             user=i_user,
-            password=key,
-            client_session_keep_alive=True
+            password=key
         )
         return conn 
     
