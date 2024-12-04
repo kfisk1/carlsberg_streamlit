@@ -74,6 +74,8 @@ def main():
                     df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
                                                                                             st.session_state.fetcher.get_generic_session_durations,
                                                                                             st.session_state.fetcher.get_event_count_by_device_token)
+                    
+                    print(df_total_count)
 
                 with col_l: # Left column with total data
                     with st.container(key="col_container", border=True):
@@ -230,7 +232,7 @@ def main():
                                     )
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.4")
+        st.write("Version 0.4.1")
 
 @st.cache_resource
 def get_snowflake_connection(i_user: str, key: str):
