@@ -75,12 +75,12 @@ def main():
                                                                                             st.session_state.fetcher.get_generic_session_durations,
                                                                                             st.session_state.fetcher.get_event_count_by_device_token)
                     
-                    print(df_total_count)
+                    st.write(df_total_count)
 
                 with col_l: # Left column with total data
                     with st.container(key="col_container", border=True):
                         st.header("Total Metrics")
-                        if df_total_count is not None: # Total event count dataframe
+                        if df_total_count is not None and not df_total_count.empty: # Total event count dataframe
                             fig = px.bar(
                                 df_total_count, 
                                 x='EVENT_NAME', 
