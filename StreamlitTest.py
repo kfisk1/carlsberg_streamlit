@@ -31,8 +31,10 @@ if "clear_cache" not in st.session_state:
 
 def main():
     
+    st.logo("images/virsabi_logo_hvid-1024x268.png", link="https://virsabi.com/")
     with header: # Login input header
         st.title('Virsabi analytics for "The Experience" [Alpha]')
+            
         user = st.text_input("Username: ")
         key = st.text_input("API Key: ", type="password")
         env = st.text_input("Environment: ")
@@ -75,7 +77,7 @@ def main():
                                                                                                 st.session_state.fetcher.get_generic_session_durations,
                                                                                                 st.session_state.fetcher.get_event_count_by_device_token)
                     
-                    if df_total_count or df_session_dur or df_event_count_by_device is Exception:
+                    if isinstance(df_total_count, Exception) or isinstance(df_session_dur, Exception) or isinstance(df_event_count_by_device, Exception):
                         print(f"Dataframe exception:: df_total_count: {df_total_count}, df_session_dur: {df_session_dur},  df_event_count_by_device: {df_event_count_by_device}")
                         st.error("Failed to fetch data. Probably because connection timed out. Enter Credentials again")
                         st.session_state.fetcher.con.close()
@@ -241,7 +243,7 @@ def main():
                                     )
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.4.1")
+        st.write("Version 0.4.2")
 
 @st.cache_resource
 def get_snowflake_connection(i_user: str, key: str):
