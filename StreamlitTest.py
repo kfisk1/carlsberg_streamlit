@@ -35,7 +35,7 @@ def main():
         st.title('Virsabi analytics for "The Experience" [Alpha]')
         user = st.text_input("Username: ")
         key = st.text_input("API Key: ", type="password")
-        env = st.text_input("Envrironment: ")
+        env = st.text_input("Environment: ")
 
         if st.button("Fetch Data"):
             try:
