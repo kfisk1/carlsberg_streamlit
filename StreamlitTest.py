@@ -56,8 +56,8 @@ def main():
             
         if "fetcher" in st.session_state and st.button("Clear Cache"):
             st.cache_data.clear()  # Clear the cache
-            st.session_state.isActive = False  # Deactivate data display
-            st.session_state.clear_cache = True  # Signal that the cache was cleared
+            st.session_state.isActive = False
+            st.session_state.clear_cache = True
 
              
 
@@ -224,26 +224,35 @@ def main():
 
                                     device_timestamp_df = results[0]
                                     device_session_dur_df = results[1]
+
+                                    if isinstance(device_timestamp_df, Exception) or isinstance(device_session_dur_df, Exception):
+                                        print(f"Dataframe exception:: device_timestamp_df: {device_timestamp_df}, device_session_dur_df: {device_session_dur_df}")
+                                        st.error("Failed to fetch data. Probably because connection timed out. Enter Credentials again")
+                                        st.session_state.fetcher.con.close()
+                                        st.cache_resource.clear()
+                                        st.session_state.fetcher = None
+                                        st.session_state.isActive = False
+                                        return
+
                                     st.write(device_timestamp_df) # show table
                             
                                     df_device_daily_avg = (
                                         device_session_dur_df.groupby('SESSION_DATE')['SESSION_DURATION']
                                         .mean()
                                         .reset_index()
-                                        .rename(columns={'SESSION_DURATION': 'AVG_SESSION_DURATION'})
                                     )
 
                                     fig_avg_daily = px.line( # show line chart
                                     df_device_daily_avg,
                                     x='SESSION_DATE',
-                                    y='AVG_SESSION_DURATION',
-                                    title='Average Session Duration Per Day By Device (Last Month)',
-                                    labels={'SESSION_DATE': 'Date', 'AVG_SESSION_DURATION': 'Average Duration (minutes)'},
+                                    y='SESSION_DURATION',
+                                    title='Session Duration Per Day By Device (Last Month)',
+                                    labels={'SESSION_DATE': 'Date', 'SESSION_DURATION': 'Session Duration (minutes)'},
                                     markers=True
                                     )
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.4.2")
+        st.write("Version 0.4.3")
 
 @st.cache_resource
 def get_snowflake_connection(i_user: str, key: str):
