@@ -92,15 +92,32 @@ class Data_fetcher:
             raise
 
 
-    def get_total_generic_session_durations_MOCK(_self) -> pd.DataFrame:
+    def get_generic_session_durations_MOCK(_self) -> pd.DataFrame:
 
-        # Mock data
         data = {
-            'DURATION_METRIC': ['Average', 'Longest', 'Shortest'],
-            'DURATION_MINUTES': [5.571429, 13.0, 2.0]
+            "SESSION_DATE": [
+                    "2024-11-12 00:00:00.000",
+                    "2024-11-12 00:00:00.000",
+                    "2024-11-13 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-14 00:00:00.000",
+                    "2024-11-19 00:00:00.000",
+                    "2024-11-19 00:00:00.000",
+                    "2024-11-19 00:00:00.000",
+                    "2024-12-02 00:00:00.000",
+            ],
+            "SESSION_DURATION": [
+                    10, 8, 4, 5, 2, 4, 4, 13, 13, 2, 6, 2, 2, 3, 12
+            ]
         }
-
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        return df
     
 
     def get_event_count_by_device_token(_self):

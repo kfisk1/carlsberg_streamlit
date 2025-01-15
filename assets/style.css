@@ -1,0 +1,77 @@
+:root {
+    --purple: #4c1434;
+    --white: #ffffff;
+    --white-text: #fcfbfb;
+    --input: #d9d9d9;
+    --error: #411a1a;
+    --border-bg: #ebebeb;
+  }
+
+
+/* page background */
+.stMain {
+    background-color: var(--white);
+}
+
+/* header container */
+.st-key-header {
+    background-color: var(--white);
+}
+
+body {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    /* justify-content: flex-start; */
+}
+
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: var(--purple);
+    border-radius: 10px;
+    border-width: 0.5rem;
+
+}
+
+[data-testid="stAlertContainer"] {
+    color: var(--error);
+}
+
+
+.stTabs [data-baseweb="tab-list"] {
+    justify-content: center;
+    margin-top: 1%;
+    gap: 2rem;
+
+}
+
+.stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+    font-size:1.2rem;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 2rem;
+    white-space: pre-wrap;
+    border-radius: 4px 4px 0px 0px;
+    gap: 5vw;
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    min-width: 30%;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: var(--border-bg);
+    /* color: var(--white-text); */
+}
+
+.st-key-footer {
+    /* display: inline-block; */
+    background-color: var(--purple);
+    color: var(--white-text);
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    text-align: center;
+    min-width: 100vw;
+    align-self: center;
+}

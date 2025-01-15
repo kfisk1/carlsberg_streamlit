@@ -1,3 +1,4 @@
+import base64
 import streamlit as st
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -6,14 +7,16 @@ import plotly.express as px
 from st_aggrid import AgGrid, GridOptionsBuilder
 import re
 import data_fetcher
-
+import pathlib
 
 st.set_page_config(layout='wide')
-
 plotly_template = "plotly_dark"
+style_path = "assets/style.css"
+logo_path = "images/virsabi_logo_green_AW-01_pos.png"
+env = "testing"
 
-header = st.container(border=True)
-body = st.container(border=False)
+header = st.container(border=True, key="header")
+body = st.container(border=False, key="body")
 
 # Data to be persistent across restarts
 if "selected_row" not in st.session_state:
@@ -26,44 +29,60 @@ if "fetcher" not in st.session_state:
     st.session_state.fetcher = None
 
 if "clear_cache" not in st.session_state:
-    st.session_state.clearCache = False
+    st.session_state.clear_cache = False
 
 
 def main():
+    css_path = pathlib.Path(style_path)
+    load_css(css_path)
+    error = []
     
-    st.logo("images/virsabi_logo_hvid-1024x268.png", link="https://virsabi.com/")
     with header: # Login input header
-        st.title('Virsabi analytics for "The Experience" [Alpha]')
-            
-        user = st.text_input("Username: ")
-        key = st.text_input("API Key: ", type="password")
-        env = st.text_input("Environment: ")
+        
 
-        if st.button("Fetch Data"):
-            try:
-                if not validate_input_string(env):
-                    st.error("Environments can only be a-Z characters")
-                    return
-                con = get_snowflake_connection(user, key)
-                fetcher = data_fetcher.Data_fetcher(con, env)
-                st.session_state.clear_cache = False
-                st.session_state.fetcher = fetcher
-                st.session_state.isActive = True
-            except Exception as e:
-                print(f"Login error: {e}")
-                st.error("Credential Error!")
-                return
-            
-        if "fetcher" in st.session_state and st.button("Clear Cache"):
-            st.cache_data.clear()  # Clear the cache
-            st.session_state.isActive = False
-            st.session_state.clear_cache = True
+        st.html( # Logo with link
+            """<a href="https://virsabi.com/">
+            <img src="data:image/png;base64,{}" width="125">
+            </a>""".format(
+                base64.b64encode(open(logo_path, "rb").read()).decode()
+            )
+        )
+        
+        user = st.text_input("Username: ", key="user")
+        key = st.text_input("API Key: ", type="password", key="password")
+        # env = st.text_input("Environment: ", key="env")
 
+        h_col_l, h_col_r = st.columns(2, vertical_alignment="center")
+        with h_col_l:
+            if st.button("Update", type="primary", use_container_width=True):
+                try:
+                    # if not validate_input_string(env):
+                    #     error.append("Environments can only be a-Z characters")
+                    # con = get_snowflake_connection(user, key) # FOR TESTING MOCK DATA
+                    con = None # REMOVE IN PROD
+                    fetcher = data_fetcher.Data_fetcher(con, env)
+                    st.session_state.clear_cache = False
+                    st.session_state.fetcher = fetcher
+                    st.session_state.isActive = True
+                except Exception as e:
+                    print(f"Login error: {e}")
+                    error.append("Credential Error!")
+        with h_col_r:
+            cc_clicked = st.button("Clear Cache", type="primary", use_container_width=True)
+            if "fetcher" in st.session_state and cc_clicked:
+                st.session_state.isActive = False
+                st.session_state.clear_cache = True
+
+        if len(error) > 0:
+            for e in error:
+                st.error(e)
+            return
              
 
     with body: # Data visualization fields
 
-        col_l, col_r = st.columns(2, gap='medium')
+        # col_l, col_r = st.columns(2, gap='medium')
+        col_l, col_r = st.tabs(["Total", "By Device"])
 
         if st.session_state.isActive:
             if st.session_state.get("clear_cache", False):
@@ -73,9 +92,9 @@ def main():
                 with st.spinner("Fetching data... (First time may take several minutes)"):
                     st.session_state.isActive = True
 
-                    df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
-                                                                                                st.session_state.fetcher.get_generic_session_durations,
-                                                                                                st.session_state.fetcher.get_event_count_by_device_token)
+                    df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started_MOCK,
+                                                                                                st.session_state.fetcher.get_generic_session_durations_MOCK,
+                                                                                                st.session_state.fetcher.get_event_count_by_device_token_MOCK)
                     
                     if isinstance(df_total_count, Exception) or isinstance(df_session_dur, Exception) or isinstance(df_event_count_by_device, Exception):
                         print(f"Dataframe exception:: df_total_count: {df_total_count}, df_session_dur: {df_session_dur},  df_event_count_by_device: {df_event_count_by_device}")
@@ -175,7 +194,6 @@ def main():
                             response = AgGrid( # Interactive table
                                 df_event_count_by_device,
                                 gridOptions=grid_options,
-                                height=300,
                                 allow_unsafe_jscode=True,
                                 update_mode='MODEL_CHANGED'
                             )
@@ -252,7 +270,32 @@ def main():
                                     )
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
-        st.write("Version 0.4.3")
+
+    with st.container(key="footer"):
+        f_col_1, f_col_2 = st.columns(2, vertical_alignment="center")
+
+        with f_col_1:
+            st.html( # Logo with link
+                """<a href="https://virsabi.com/">
+                <img src="data:image/png;base64,{}" width="200">
+                </a>""".format(
+                    base64.b64encode(open("images/virsabi_logo_hvid-1024x268.png", "rb").read()).decode()
+                )     
+            )
+        with f_col_2:
+            st.write("Analytics")
+            st.write("Version 0.4.4")
+
+        
+        
+        # st.html("""
+        #         <div class="footer">
+        #             <p>Version 0.4.4</a></p>
+        #         </div>
+        #      """)
+def load_css(file_path):
+    with open(file_path) as f:
+        st.html(f"<style>{f.read()}</style>")
 
 @st.cache_resource
 def get_snowflake_connection(i_user: str, key: str):
