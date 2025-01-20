@@ -8,6 +8,10 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 import re
 import data_fetcher
 import pathlib
+from contextlib import suppress
+
+class InterruptResource(UserWarning):
+    """To interrupt body on connection errors"""
 
 st.set_page_config(layout='wide')
 plotly_template = "plotly_dark"
@@ -40,13 +44,15 @@ def main():
     with header: # Login input header
         
 
-        st.html( # Logo with link
-            """<a href="https://virsabi.com/">
-            <img src="data:image/png;base64,{}" width="125">
-            </a>""".format(
-                base64.b64encode(open(logo_path, "rb").read()).decode()
+        st.html(
+            """
+            <img id="expimg" src="data:image/png;base64,{}">
+            <h2 id="title1" >Analytics</h2>
+            """.format(
+                base64.b64encode(open("images/Purple_CBE.png", "rb").read()).decode()
             )
         )
+        st.header("", divider="grey")
         
         user = st.text_input("Username: ", key="user")
         key = st.text_input("API Key: ", type="password", key="password")
@@ -76,10 +82,10 @@ def main():
         if len(error) > 0:
             for e in error:
                 st.error(e)
-            return
+            st.session_state.isActive = False
              
 
-    with body: # Data visualization fields
+    with suppress(InterruptResource) as _, body: # Data visualization fields
 
         # col_l, col_r = st.columns(2, gap='medium')
         col_l, col_r = st.tabs(["Total", "By Device"])
@@ -100,10 +106,10 @@ def main():
                         print(f"Dataframe exception:: df_total_count: {df_total_count}, df_session_dur: {df_session_dur},  df_event_count_by_device: {df_event_count_by_device}")
                         st.error("Failed to fetch data. Probably because connection timed out. Enter Credentials again")
                         st.session_state.fetcher.con.close()
-                        st.cache_resource.clear()
                         st.session_state.fetcher = None
+                        st.cache_resource.clear()
                         st.session_state.isActive = False
-                        return
+                        raise InterruptResource()
 
 
 
@@ -186,16 +192,18 @@ def main():
                         st.header("Metrics by device")
 
                         if df_event_count_by_device is not None and isinstance(df_event_count_by_device, pd.DataFrame): # event count by device dataframe
-                            st.write("Device Event Table. Select row for visualization")     
+                            st.write("Device Event Table. Select row for visualization and more data")     
                             grid_options = GridOptionsBuilder.from_dataframe(df_event_count_by_device)
-                            grid_options.configure_selection('single')  # Single-row selection mode
+                            grid_options.configure_default_column(resizable=True, flex=1)
+                            grid_options.configure_selection('single')
                             grid_options = grid_options.build()
 
                             response = AgGrid( # Interactive table
                                 df_event_count_by_device,
                                 gridOptions=grid_options,
                                 allow_unsafe_jscode=True,
-                                update_mode='MODEL_CHANGED'
+                                update_mode='MODEL_CHANGED',
+                                fit_columns_on_grid_load=True
                             )
 
                             if response:
@@ -250,7 +258,7 @@ def main():
                                         st.cache_resource.clear()
                                         st.session_state.fetcher = None
                                         st.session_state.isActive = False
-                                        return
+                                        raise InterruptResource()
 
                                     st.write(device_timestamp_df) # show table
                             
@@ -271,28 +279,36 @@ def main():
                                     fig_avg_daily.update_layout(template='plotly_white')
                                     st.plotly_chart(fig_avg_daily)
 
-    with st.container(key="footer"):
+    with st.container(key="footer"): # Footer container
         f_col_1, f_col_2 = st.columns(2, vertical_alignment="center")
 
         with f_col_1:
+             
             st.html( # Logo with link
-                """<a href="https://virsabi.com/">
-                <img src="data:image/png;base64,{}" width="200">
-                </a>""".format(
+                """
+                <img src="data:image/png;base64,{}" width="100">
+                """.format(
+                    base64.b64encode(open("images/CB_Logo_White.png", "rb").read()).decode()
+                )     
+            )
+
+            st.html( # Logo with link
+                """
+                <a href="https://virsabi.com/">
+                    <img src="data:image/png;base64,{}" width="200">
+                </a>
+                """.format(
                     base64.b64encode(open("images/virsabi_logo_hvid-1024x268.png", "rb").read()).decode()
                 )     
             )
+
+
+
         with f_col_2:
             st.write("Analytics")
             st.write("Version 0.4.4")
 
-        
-        
-        # st.html("""
-        #         <div class="footer">
-        #             <p>Version 0.4.4</a></p>
-        #         </div>
-        #      """)
+
 def load_css(file_path):
     with open(file_path) as f:
         st.html(f"<style>{f.read()}</style>")

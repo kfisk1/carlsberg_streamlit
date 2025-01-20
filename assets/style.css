@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap');
+
 :root {
     --purple: #4c1434;
     --white: #ffffff;
@@ -23,6 +25,22 @@ body {
     display: flex;
     flex-direction: column;
     /* justify-content: flex-start; */
+}
+
+#expimg {
+    max-width: 100%;
+    height: auto;
+
+     @media (min-width: 724px)  {
+        max-width: 500px;
+     }
+}
+
+#title1 {
+    font-family: "Permanent Marker", serif;
+    font-weight: 400;
+    font-style: normal;
+    color: var(--purple);
 }
 
 [data-testid="stVerticalBlockBorderWrapper"] {
