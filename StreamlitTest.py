@@ -19,6 +19,7 @@ style_path = "assets/style.css"
 logo_path = "images/virsabi_logo_green_AW-01_pos.png"
 env = "testing"
 
+main_con = st.container(key="main")
 header = st.container(border=True, key="header")
 body = st.container(border=False, key="body")
 
@@ -43,7 +44,6 @@ def main():
     
     with header: # Login input header
         
-
         st.html(
             """
             <img id="expimg" src="data:image/png;base64,{}">
@@ -52,7 +52,7 @@ def main():
                 base64.b64encode(open("images/Purple_CBE.png", "rb").read()).decode()
             )
         )
-        st.header("", divider="grey")
+        st.divider()
         
         user = st.text_input("Username: ", key="user")
         key = st.text_input("API Key: ", type="password", key="password")
@@ -83,7 +83,7 @@ def main():
             for e in error:
                 st.error(e)
             st.session_state.isActive = False
-             
+            
 
     with suppress(InterruptResource) as _, body: # Data visualization fields
 
@@ -283,30 +283,27 @@ def main():
         f_col_1, f_col_2 = st.columns(2, vertical_alignment="center")
 
         with f_col_1:
-             
+            
             st.html( # Logo with link
                 """
-                <img src="data:image/png;base64,{}" width="100">
+                <img class="logo" src="data:image/png;base64,{}" width="100">
                 """.format(
                     base64.b64encode(open("images/CB_Logo_White.png", "rb").read()).decode()
-                )     
-            )
-
-            st.html( # Logo with link
+                )
+                +
                 """
-                <a href="https://virsabi.com/">
-                    <img src="data:image/png;base64,{}" width="200">
+                <a class="logo" href="https://virsabi.com/">
+                    <img src="data:image/png;base64,{}" width="132">
                 </a>
                 """.format(
-                    base64.b64encode(open("images/virsabi_logo_hvid-1024x268.png", "rb").read()).decode()
-                )     
+                    base64.b64encode(open("images/virsabi_logo_green_AW-01_neg.png", "rb").read()).decode()
+                )
             )
-
 
 
         with f_col_2:
             st.write("Analytics")
-            st.write("Version 0.5 [BETA]")
+            st.write("Version 0.4.5 [MOCK]")
 
 
 def load_css(file_path):
