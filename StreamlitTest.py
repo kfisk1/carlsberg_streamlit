@@ -302,7 +302,7 @@ def main():
 
         with f_col_2:
             st.write("Analytics")
-            st.write("Version 0.4.5 [MOCK]")
+            st.write("Version 0.5 [BETA]")
 
 
 def load_css(file_path):
