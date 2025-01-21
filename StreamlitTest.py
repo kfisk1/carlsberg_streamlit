@@ -60,12 +60,12 @@ def main():
 
         h_col_l, h_col_r = st.columns(2, vertical_alignment="center")
         with h_col_l:
-            if st.button("Update", type="primary", use_container_width=True):
+            if st.button("Fetch", type="primary", use_container_width=True):
                 try:
                     # if not validate_input_string(env):
                     #     error.append("Environments can only be a-Z characters")
-                    # con = get_snowflake_connection(user, key) # FOR TESTING MOCK DATA
-                    con = None # REMOVE IN PROD
+                    con = get_snowflake_connection(user, key) # FOR TESTING MOCK DATA
+                    # con = None # REMOVE IN PROD
                     fetcher = data_fetcher.Data_fetcher(con, env)
                     st.session_state.clear_cache = False
                     st.session_state.fetcher = fetcher
@@ -78,6 +78,8 @@ def main():
             if "fetcher" in st.session_state and cc_clicked:
                 st.session_state.isActive = False
                 st.session_state.clear_cache = True
+                st.cache_resource.clear()
+                st.cache_data.clear()
 
         if len(error) > 0:
             for e in error:
@@ -98,9 +100,9 @@ def main():
                 with st.spinner("Fetching data... (First time may take several minutes)"):
                     st.session_state.isActive = True
 
-                    df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started_MOCK,
-                                                                                                st.session_state.fetcher.get_generic_session_durations_MOCK,
-                                                                                                st.session_state.fetcher.get_event_count_by_device_token_MOCK)
+                    df_total_count, df_session_dur, df_event_count_by_device = run_funcs_async(st.session_state.fetcher.get_total_event_started,
+                                                                                                st.session_state.fetcher.get_generic_session_durations,
+                                                                                                st.session_state.fetcher.get_event_count_by_device_token)
                     
                     if isinstance(df_total_count, Exception) or isinstance(df_session_dur, Exception) or isinstance(df_event_count_by_device, Exception):
                         print(f"Dataframe exception:: df_total_count: {df_total_count}, df_session_dur: {df_session_dur},  df_event_count_by_device: {df_event_count_by_device}")
@@ -115,7 +117,6 @@ def main():
 
                 with col_l: # Left column with total data
                     with st.container(key="col_container", border=True):
-                        st.header("Total Metrics")
                         if df_total_count is not None and isinstance(df_total_count, pd.DataFrame): # Total event count dataframe
                             fig = px.bar(
                                 df_total_count, 
@@ -189,8 +190,6 @@ def main():
                 with col_r: # Right column for data by device
                     with st.container(key="col_container2", border=True):
 
-                        st.header("Metrics by device")
-
                         if df_event_count_by_device is not None and isinstance(df_event_count_by_device, pd.DataFrame): # event count by device dataframe
                             st.write("Device Event Table. Select row for visualization and more data")     
                             grid_options = GridOptionsBuilder.from_dataframe(df_event_count_by_device)
@@ -238,7 +237,7 @@ def main():
                                 
                                 st.plotly_chart(fig)
 
-                                if (st.button("Fetch more")): # fetch extra device data from db when pressed
+                                if (st.button("Fetch more", type="primary")): # fetch extra device data from db when pressed
                                     with st.spinner("Fetching device data... May take several minutes first time"):
                                         st.write("Latest event recordings by device")
                                         token = str(row.iloc[0]["DEVICE_TOKEN"])

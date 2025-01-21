@@ -62,6 +62,10 @@ body {
     max-height: 0px;
 }
 
+[data-testid="stSpinner"] {
+    justify-content: center;
+}
+
 
 /* page background */
 .stMain {
