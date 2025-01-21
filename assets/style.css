@@ -32,6 +32,7 @@ body {
     font-family: "Permanent Marker", serif;
     font-weight: 400;
     font-style: normal;
+    font-size: 2.25rem;
     color: var(--purple);
 }
 
@@ -57,6 +58,11 @@ body {
     color: var(--error);
 }
 
+[data-testid="stHeadingWithActionElements"] {
+    max-height: 0px;
+}
+
+
 /* page background */
 .stMain {
     background-color: var(--white);
@@ -80,7 +86,6 @@ body {
     justify-content: center;
     margin-top: 1%;
     gap: 2rem;
-
 }
 
 .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
